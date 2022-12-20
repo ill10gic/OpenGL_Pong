@@ -14,6 +14,48 @@
 
 // Global Settings
 
+// 2d vector struct
+struct vec2 {
+	float x;
+	float y;
+};
+
+// ball variables
+const float ballDiameter = 16.0f;
+const float ballRadius = 16.0f / 2.0f;
+
+/*	Vector velocity logic
+	Ball's vector will be moved by <x, y> = <x, y> + velocityVector * deltaTime
+	Collision are Elastic collisions (no loss of energy) velocity does not decrease
+	Velocity can increase. Faster moving paddle can increase velocity
+
+	if paddle is moving up and ball hit paddle moving up, negate the x component of ball vector
+	but will modify the y component of ball vector to speed or slow ball
+*/
+
+/*	collision detection logic
+	
+	For top of bounding box:
+	if ball radius, plus the y component of ball's offset is greater than scrn height, a collision occurred
+
+	for right side of bounding box:
+	if ball radius, plus x component of ball's offset is greater than scrn width, a collision happened
+
+	for bottom:
+	if ball's y minus radius is less than zero, a collision happened
+
+
+*/
+
+// paddle variables
+const float paddleHeight = 100.0f;
+const float paddleWidth = 10.0f;
+const float halfPaddleHeight = paddleHeight / 2.0f;
+const float halfPaddleWidth = paddleWidth / 2.0f;
+const float offset = ballRadius;
+const float paddleBoundary = halfPaddleHeight + offset;
+const float paddleMovementSpeed = 75.0f;
+
 // opengl settings
 unsigned int versionMajor = 4;
 unsigned int versionMinor = 3;
@@ -66,53 +108,102 @@ int main() {
 	}
 
 	glViewport(0, 0, scrWidth, scrHeight);
+
 	// Shader setup
 	shaderProgram = Utils::GenShaderProgram("main.vs", "main.fs");
 	Utils::setOrthographicProjection(shaderProgram, 0, scrWidth, 0, scrHeight, 0.0f, 1.0f);
 
-	// setup vertex data - general template for a square - will scale it to whatever we want to
-	float vertices[] = {
-		//	x		y
+	/*
+		Paddle VAO/VBOs
+	*/
+
+	// paddle vertex data
+	float paddleVertices[] = {
 		0.5f, 0.5f,
 		-0.5f, 0.5f,
 		-0.5f, -0.5f,
 		0.5f, -0.5f
 	};
 
-	// index array - because vertices 0, 2 will overlap
-	unsigned int indices[] = {
-		0, 1, 2, // triangle 1 - top left
-		2, 3, 0  // triangle 2 - bottom right
+	// paddle vbo indice data - counter clockwise winding order
+	unsigned int paddleIndices[] = {
+		0, 1, 2, // top left triangle
+		2, 3, 0 // bottom right triangle
 	};
 
-	// offsets array - what is this for?
-	float offsets[] = {
-		200.0f, 200.0f
+	// paddle offsets
+	float paddleOffsets[] = {
+		35.0f, scrHeight / 2.0f, // left paddle
+		scrWidth - 35.0f, scrHeight / 2.0f // righht paddle
 	};
 
 	// size array
-	float sizes[] = {
-		50.0f, 50.0f
+	float paddleSizes[] = {
+		paddleWidth, paddleHeight // only need to specify once
+	};
+
+	// setup VAO
+	VAO paddleVAO;
+	Utils::genVAO(&paddleVAO);
+
+	// pos VBO
+	Utils::genBufferObject<float>(paddleVAO.posVBO, GL_ARRAY_BUFFER, 2 * 4, paddleVertices, GL_STATIC_DRAW);
+	Utils::setAttPointer<float>(paddleVAO.posVBO, 0, 2, GL_FLOAT, 2, 0);
+
+	// offset VBO
+	Utils::genBufferObject(paddleVAO.offsetVBO, GL_ARRAY_BUFFER, 2 * 2, paddleOffsets, GL_DYNAMIC_DRAW);
+	Utils::setAttPointer<float>(paddleVAO.offsetVBO, 1, 2, GL_FLOAT, 2, 0, 1);
+
+	// size VBO
+	Utils::genBufferObject(paddleVAO.sizeVBO, GL_ARRAY_BUFFER, 2 * 1, paddleSizes, GL_STATIC_DRAW);
+	Utils::setAttPointer<float>(paddleVAO.sizeVBO, 2, 2, GL_FLOAT, 2, 0, 2); // dont set divisor because this doesn't change between instances
+
+
+	// paddle EBO
+	Utils::genBufferObject<GLuint>(paddleVAO.EBO, GL_ELEMENT_ARRAY_BUFFER, 2 * 3, paddleIndices, GL_STATIC_DRAW);
+
+	// unbind
+	Utils::unbindBuffer(GL_ARRAY_BUFFER);
+	Utils::unbindVAO();
+
+	/*
+		Ball VAO
+	*/
+
+	float* ballVertices;
+	unsigned int* ballIndices;
+	unsigned int numOfTriangles = 50;
+
+	Utils::Gen2DCircleArray(ballVertices, ballIndices, numOfTriangles, 0.5f);
+
+	// offsets array - what is this for?
+	float ballOffsets[] = {
+		scrWidth / 2, scrHeight / 2
+	};
+
+	// size array
+	float ballSizes[] = {
+		ballDiameter, ballDiameter
 	};
 
 	// setup VAO/VBOs
-	VAO vao;
-	Utils::genVAO(&vao);
+	VAO ballVao;
+	Utils::genVAO(&ballVao);
 
 	// pos VBO
-	Utils::genBufferObject<float>(vao.posVBO, GL_ARRAY_BUFFER, 2 * 4, vertices, GL_STATIC_DRAW);
-	Utils::setAttPointer<float>(vao.posVBO, 0, 2, GL_FLOAT, 2, 0);
+	Utils::genBufferObject<float>(ballVao.posVBO, GL_ARRAY_BUFFER, (numOfTriangles + 1) * 2, ballVertices, GL_STATIC_DRAW);
+	Utils::setAttPointer<float>(ballVao.posVBO, 0, 2, GL_FLOAT, 2, 0);
 
 	// offset VBO
-	Utils::genBufferObject<float>(vao.offsetVBO, GL_ARRAY_BUFFER, 1 * 2, offsets, GL_DYNAMIC_DRAW);
-	Utils::setAttPointer<float>(vao.offsetVBO, 1, 2, GL_FLOAT, 2, 0, 1);
+	Utils::genBufferObject<float>(ballVao.offsetVBO, GL_ARRAY_BUFFER, 1 * 2, ballOffsets, GL_DYNAMIC_DRAW);
+	Utils::setAttPointer<float>(ballVao.offsetVBO, 1, 2, GL_FLOAT, 2, 0, 1);
 
 	// size VBO
-	Utils::genBufferObject<float>(vao.sizeVBO, GL_ARRAY_BUFFER, 1 * 2, offsets, GL_DYNAMIC_DRAW);
-	Utils::setAttPointer<float>(vao.sizeVBO, 2, 2, GL_FLOAT, 2, 0, 1);
+	Utils::genBufferObject<float>(ballVao.sizeVBO, GL_ARRAY_BUFFER, 1 * 2, ballSizes, GL_STATIC_DRAW);
+	Utils::setAttPointer<float>(ballVao.sizeVBO, 2, 2, GL_FLOAT, 2, 0, 1);
 
 	// EBO
-	Utils::genBufferObject<unsigned int>(vao.EBO, GL_ELEMENT_ARRAY_BUFFER, 3 * 2, indices, GL_STATIC_DRAW);
+	Utils::genBufferObject<unsigned int>(ballVao.EBO, GL_ELEMENT_ARRAY_BUFFER, 3 * numOfTriangles, ballIndices, GL_STATIC_DRAW);
 
 	// unbind VBO and VAO
 	Utils::unbindBuffer(GL_ARRAY_BUFFER);
@@ -125,17 +216,19 @@ int main() {
 		lastFrame += dt;
 
 		// input
-		Utils::processInput(window, offsets);
+		Utils::processInput(window, paddleOffsets, dt, scrHeight, paddleBoundary);
 
 		// update data
-		Utils::updateData<float>(vao.offsetVBO, 0, 1 * 2, offsets);
+		Utils::updateData<float>(paddleVAO.offsetVBO, 0, 2 * 2, paddleOffsets);
+		Utils::updateData<float>(ballVao.offsetVBO, 0, 1 * 2, ballOffsets);
 
 		//  clear screen for new frame
 		Utils::clearScreen();
 
 		// render object
 		Utils::BindShaderProgram(shaderProgram);
-		Utils::draw(vao, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT, 0);
+		Utils::draw(ballVao, GL_TRIANGLES, 3 * numOfTriangles, GL_UNSIGNED_INT, 0);
+		Utils::draw(paddleVAO, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT, 0, 2);
 		Utils::checkOpenGLError();
 
 		// swap frames
@@ -143,7 +236,8 @@ int main() {
 	}
 
 	// cleanup memory
-	Utils::cleanup(vao);
+	Utils::cleanup(ballVao);
+	Utils::cleanup(paddleVAO);
 	Utils::deleteShader(shaderProgram);
 	Utils::cleanup();
 	return 0;

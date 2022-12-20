@@ -37,22 +37,27 @@ void Utils::createWindow(GLFWwindow*& window, const char* title, unsigned int wi
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
 
-void Utils::processInput(GLFWwindow* window, float* offset)
+void Utils::processInput(GLFWwindow* window, float* paddleOffsets, double dt, unsigned int scrHeight, float paddleBoundary, float paddleSpeed)
 {
+	float movementRate = paddleSpeed;
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+		if (paddleOffsets[1] < scrHeight - paddleBoundary)
+			paddleOffsets[1] += dt * movementRate;
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+		if (paddleOffsets[1] > paddleBoundary)
+			paddleOffsets[1] -= dt * movementRate;
+	}
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {	
+		if (paddleOffsets[3] > paddleBoundary)
+			paddleOffsets[3] -= dt * movementRate;
+	}
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-		offset[1] += 1.0f;
-	}
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-		offset[0] += 1.0f;
-	}
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-		offset[1] -= 1.0f;
-	}
-	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-		offset[0] -= 1.0f;
+		if (paddleOffsets[3] < scrHeight - paddleBoundary)
+			paddleOffsets[3] += dt * movementRate;
 	}
 }
 
@@ -260,3 +265,51 @@ void Utils::genVAO(VAO* vao)
 	glGenVertexArrays(1, &vao->val); // creates memory space for the vertex array - passes new ID into VAO
 	glBindVertexArray(vao->val); // any open GL functions we used will work on this VAO now
 }
+
+void Utils::Gen2DCircleArray(float*& vertices, unsigned int*& indices, unsigned int noTriangles, float radius)
+{
+	vertices = new float[(noTriangles + 1) * 2]; // sets pointer we passed in to something new - 10 triangles => 22 vertices (for x & y's)
+
+	vertices[0] = 0.0f; // origin x
+	vertices[1] = 0.0f; // origin y
+
+	indices = new unsigned int[noTriangles * 3];
+
+	// E.G.
+	// 0 1 2
+	// 0 2 3
+	// 0 3 4
+	// etc ...
+
+
+	float pi = 4 * atanf(1.0f); // atan = tan(pi/4)  - shortcut to get PI (approx) through trig functions
+	float noTrianglesF = (float)noTriangles;
+	float theta = 0.0f;
+
+	// go in counter clockwise motion to generate circle - each step is 2pi/noTriangles
+	for (unsigned int i = 0; i < noTriangles; i++) {
+		/*
+			radius = r
+			theta = i * (2 * pi/ noTirangles)
+			x = r*cos(theta) = vertices[(i + 1) * 2]		// we already set the initial vertice above and need to skip 2 for each x,y coordinate
+			y = r*sin(theta) = vertices[(i + 1) * 2 + 1]	// we already set the initial vertice above and need to skip 2 for each x,y coordinate + 1 for y
+		*/
+
+		// set vertices
+		vertices[(i + 1) * 2] = radius * cosf(theta);		// x => i after the initial origin value * 2 because of (x,y)'s
+		vertices[(i + 1) * 2 + 1] = radius * sinf(theta);	// y => same as x but adding a 1 for y
+
+		// set indices
+		indices[i * 3 + 0] = 0;			// origin of circle - 1
+		indices[i * 3 + 1] = i + 1;		// vertex - 2
+		indices[i * 3 + 2] = i + 2;		// vertex - 3
+
+		// setup theta
+		theta += 2 * pi / noTriangles;
+	}
+	// set the last index to wrap around to beginning
+	indices[(noTriangles - 1) * 3 + 2] = 1;
+
+}
+
+

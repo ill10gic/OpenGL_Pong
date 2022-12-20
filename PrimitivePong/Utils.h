@@ -60,7 +60,7 @@ public:
 	static bool loadGlad();
 
 	// handle user input
-	static void processInput(GLFWwindow* window, float* offset);
+	static void processInput(GLFWwindow* window, float* offset, double dt, unsigned int scrHeight, float paddleBoundary, float speed = 150.0f);
 
 	// clear screen
 	static void clearScreen();
@@ -130,4 +130,7 @@ public:
 	static void printProgramLog(GLuint shaderProgramId);
 	static int checkShaderCompilationErrors(GLuint shader);
 	static void CheckProgramLinkStatus(GLuint shaderProgramId);
+
+	// method to generate circles - and other models (coming soon)
+	static void Gen2DCircleArray(float*& vertices, unsigned int*& indices, unsigned int noTriangles, float radius = 0.5f);
 };
