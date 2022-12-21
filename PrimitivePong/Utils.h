@@ -23,6 +23,12 @@ struct VAO {
 	GLuint EBO;
 };
 
+// 2d vector struct
+struct vec2 {
+	float x;
+	float y;
+};
+
 class Utils
 {
 public:
@@ -60,7 +66,10 @@ public:
 	static bool loadGlad();
 
 	// handle user input
-	static void processInput(GLFWwindow* window, float* offset, double dt, unsigned int scrHeight, float paddleBoundary, float speed = 150.0f);
+	static void processInput(GLFWwindow* window, vec2* offset, float* paddleVelocities, double dt, unsigned int scrHeight, float paddleBoundary, float speed = 450.0f);
+
+	// handles logic for collisions
+	static void processCollisions(float ballRadius, vec2* ballOffsets, vec2* ballVelocity, vec2* paddleOffsets, unsigned int scrWidth, unsigned int scrHeight);
 
 	// clear screen
 	static void clearScreen();

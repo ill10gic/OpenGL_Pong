@@ -37,27 +37,50 @@ void Utils::createWindow(GLFWwindow*& window, const char* title, unsigned int wi
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
 
-void Utils::processInput(GLFWwindow* window, float* paddleOffsets, double dt, unsigned int scrHeight, float paddleBoundary, float paddleSpeed)
+void Utils::processInput(GLFWwindow* window, vec2* paddleOffsets, float* paddleVelocities, double dt, unsigned int scrHeight, float paddleBoundary, float paddleSpeed)
 {
 	float movementRate = paddleSpeed;
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
+
+	paddleVelocities[0] = 0.0f;
+	paddleVelocities[1] = 0.0f;
+
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-		if (paddleOffsets[1] < scrHeight - paddleBoundary)
-			paddleOffsets[1] += dt * movementRate;
+		if (paddleOffsets[0].y < scrHeight - paddleBoundary)
+			paddleVelocities[0] = paddleSpeed;
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-		if (paddleOffsets[1] > paddleBoundary)
-			paddleOffsets[1] -= dt * movementRate;
+		if (paddleOffsets[0].y > paddleBoundary)
+			paddleVelocities[0] = -paddleSpeed;
 	}
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {	
-		if (paddleOffsets[3] > paddleBoundary)
-			paddleOffsets[3] -= dt * movementRate;
+		if (paddleOffsets[1].y > paddleBoundary)
+			paddleVelocities[1] = -paddleSpeed;
 	}
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-		if (paddleOffsets[3] < scrHeight - paddleBoundary)
-			paddleOffsets[3] += dt * movementRate;
+		if (paddleOffsets[1].y < scrHeight - paddleBoundary)
+			paddleVelocities[1] = paddleSpeed;
+	}
+}
+
+void Utils::processCollisions(float ballRadius, vec2* ballOffsets, vec2* ballVelocity, vec2* paddleOffsets, unsigned int scrWidth, unsigned int scrHeight) {
+	// bottom or top of playing field
+	if (ballOffsets->y - ballRadius <= 0 || ballOffsets->y + ballRadius >= scrHeight) {
+		ballVelocity->y *= -1;
+	}
+
+	// left side collision
+	if (ballOffsets->x - ballRadius <= 0) {
+		std::cout << "Right player point" << std::endl;
+		ballVelocity->x *= -1;
+	}
+
+	// right side collision
+	if (ballOffsets->x + ballRadius >= scrWidth) {
+		std::cout << "Left player point" << std::endl;
+		ballVelocity->x *= -1;
 	}
 }
 
