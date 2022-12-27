@@ -69,7 +69,7 @@ public:
 	static void processInput(GLFWwindow* window, vec2* offset, float* paddleVelocities, double dt, unsigned int scrHeight, float paddleBoundary, float speed = 450.0f);
 
 	// handles logic for collisions
-	static void processCollisions(float ballRadius, vec2* ballOffsets, vec2* ballVelocity, vec2* paddleOffsets, unsigned int scrWidth, unsigned int scrHeight);
+	static bool processCollisions(float ballRadius, vec2* ballOffsets, vec2* ballVelocity, vec2* initBallVelocity, vec2* paddleOffsets, float* paddleVelocities, unsigned int scrWidth, unsigned int scrHeight, float halfPaddleWidth, float halfPaddleHeight, float deltaTime, bool framesThreshholdMet = true);
 
 	// clear screen
 	static void clearScreen();

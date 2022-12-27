@@ -50,22 +50,37 @@ void Utils::processInput(GLFWwindow* window, vec2* paddleOffsets, float* paddleV
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
 		if (paddleOffsets[0].y < scrHeight - paddleBoundary)
 			paddleVelocities[0] = paddleSpeed;
+		else {
+			paddleOffsets[0].y = scrHeight - paddleBoundary;
+		}
 	}
+
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
 		if (paddleOffsets[0].y > paddleBoundary)
 			paddleVelocities[0] = -paddleSpeed;
+		else {
+			paddleOffsets[0].y = paddleBoundary;
+		}
 	}
+
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {	
 		if (paddleOffsets[1].y > paddleBoundary)
 			paddleVelocities[1] = -paddleSpeed;
+		else {
+			paddleOffsets[1].y = paddleBoundary;
+		}
 	}
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
 		if (paddleOffsets[1].y < scrHeight - paddleBoundary)
 			paddleVelocities[1] = paddleSpeed;
+		else {
+			paddleOffsets[1].y = scrHeight - paddleBoundary;
+		}
 	}
 }
 
-void Utils::processCollisions(float ballRadius, vec2* ballOffsets, vec2* ballVelocity, vec2* paddleOffsets, unsigned int scrWidth, unsigned int scrHeight) {
+bool Utils::processCollisions(float ballRadius, vec2* ballOffsets, vec2* ballVelocity, vec2* initBallVelocity, vec2* paddleOffsets, float* paddleVelocities, unsigned int scrWidth, unsigned int scrHeight, float halfPaddleWidth, float halfPaddleHeight, float deltaTime, bool framesThreshholdMet) {
+	bool reset = false;
 	// bottom or top of playing field
 	if (ballOffsets->y - ballRadius <= 0 || ballOffsets->y + ballRadius >= scrHeight) {
 		ballVelocity->y *= -1;
@@ -74,14 +89,68 @@ void Utils::processCollisions(float ballRadius, vec2* ballOffsets, vec2* ballVel
 	// left side collision
 	if (ballOffsets->x - ballRadius <= 0) {
 		std::cout << "Right player point" << std::endl;
-		ballVelocity->x *= -1;
+		reset = true;
 	}
 
 	// right side collision
 	if (ballOffsets->x + ballRadius >= scrWidth) {
 		std::cout << "Left player point" << std::endl;
-		ballVelocity->x *= -1;
+		reset = true;
 	}
+
+	if (reset) {
+		// reset ball to middle
+		ballOffsets->x = scrWidth / 2.0f;
+		ballOffsets->y = scrHeight / 2.0f;
+
+		// reset velocity
+		ballVelocity->x = initBallVelocity->x;
+		ballVelocity->y = initBallVelocity->y;
+	}
+
+	bool collision = false;
+	// paddle collisions
+	int i = 0;
+	if (ballOffsets->x > scrWidth / 2.0f) { // TODO - check if this should be height
+		i++; // if ball is on the right side, check with right paddle
+	}
+
+	// vector distance of center of ball to center of paddle
+	vec2 distance = { std::abs(ballOffsets->x - paddleOffsets[i].x), std::abs(ballOffsets->y - paddleOffsets[i].y) };
+	if (framesThreshholdMet) {
+		// If conditions pass to indicate a collision
+		if (distance.x <= halfPaddleWidth + ballRadius && distance.y <= halfPaddleHeight + ballRadius) {
+
+			// corner collision
+			if ((distance.x * distance.x + distance.y * distance.y) <= (distance.x * distance.x + distance.y * distance.y) + ballRadius) {
+				collision = true;
+				ballVelocity->x *= -1; // just treat as longside collision for simplicity
+			}
+
+			// long side collision
+			else if ((paddleOffsets[i].y - halfPaddleHeight <= ballOffsets->y && paddleOffsets[i].y + halfPaddleHeight >= ballOffsets->y) // within the long side of paddle
+				&& distance.x <= ballRadius + halfPaddleWidth)  // contact on long side of paddle
+			{
+				collision = true;
+				ballVelocity->x *= -1; // reverse X velocity
+			}
+
+			// short side collision
+			else if ((paddleOffsets[i].x + halfPaddleWidth >= ballOffsets->x && paddleOffsets[i].x - halfPaddleWidth <= ballOffsets->x) // top short side
+				&& distance.y <= ballRadius + halfPaddleHeight)  // bottom shortside
+			{
+				collision = true;
+				ballVelocity->y *= -1; // reverse y velocity
+			}
+		}
+	}	
+
+	if (collision) {
+		float k = 0.3f;
+		ballVelocity->x *= 1.01f;
+		ballVelocity->y += k * paddleVelocities[i];
+	}
+	return collision;
 }
 
 void Utils::clearScreen()

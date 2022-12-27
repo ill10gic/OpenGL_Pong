@@ -15,10 +15,11 @@
 // Global Settings
 
 // ball variables
-const float ballDiameter = 16.0f;
-const float ballRadius = 16.0f / 2.0f;
+const float ballDiameter = 25.0f;
+const float ballRadius = ballDiameter / 2.0f;
 vec2 ballOffsets[1];
-vec2 ballVelocity = {500.0f, 500.0f};
+vec2 ballVelocity = {400.0f, 400.0f};
+vec2 initBallVelocity = { 500.0f, 500.0f };
 
 /*	Vector velocity logic
 	Ball's vector will be moved by <x, y> = <x, y> + velocityVector * deltaTime
@@ -44,8 +45,8 @@ vec2 ballVelocity = {500.0f, 500.0f};
 */
 
 // paddle variables
-const float paddleHeight = 100.0f;
-const float paddleWidth = 10.0f;
+const float paddleHeight = 150.0f;
+const float paddleWidth = 20.0f;
 const float halfPaddleHeight = paddleHeight / 2.0f;
 const float halfPaddleWidth = paddleWidth / 2.0f;
 const float offset = ballRadius;
@@ -59,9 +60,13 @@ unsigned int versionMajor = 4;
 unsigned int versionMinor = 3;
 
 // window settings
-unsigned int scrWidth = 800;
-unsigned int scrHeight = 600;
+unsigned int scrWidth = 1600;
+unsigned int scrHeight = 1200;
 const char* title = "PrimitivePong";
+
+// collision check buffer - to limit the number of collision detection cycles, prevents visual/visics glitches
+unsigned int framesSinceLastCollision = 1;
+unsigned int framesThreshhold = 500;
 
 GLuint shaderProgram;
 
@@ -243,8 +248,20 @@ int main() {
 		ballOffsets->x += ballVelocity.x * dt;
 		ballOffsets->y += ballVelocity.y * dt;
 
+		// increment elapsed frames since last collision
+		if (framesSinceLastCollision > 0) {
+			framesSinceLastCollision++;
+		}
+
+		// if frames since last collision meets threshold		
+		bool paddleCheckThreshholdMet = framesSinceLastCollision >= framesThreshhold;
 		// check for collisions
-		Utils::processCollisions(ballRadius, ballOffsets, &ballVelocity, paddleOffsets, scrWidth, scrHeight);
+		bool collision = Utils::processCollisions(ballRadius, ballOffsets, &ballVelocity, &initBallVelocity, paddleOffsets, paddleVelocities, scrWidth, scrHeight, halfPaddleWidth, halfPaddleHeight, dt, paddleCheckThreshholdMet);
+
+		if (collision) {
+			// reset framesSinceLastCollision
+			framesSinceLastCollision = 1;
+		}
 
 		// update data in GPU
 		Utils::draw(ballVao, GL_TRIANGLES, 3 * numOfTriangles, GL_UNSIGNED_INT, 0);
