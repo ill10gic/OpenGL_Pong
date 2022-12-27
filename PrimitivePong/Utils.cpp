@@ -122,7 +122,7 @@ bool Utils::processCollisions(float ballRadius, vec2* ballOffsets, vec2* ballVel
 		if (distance.x <= halfPaddleWidth + ballRadius && distance.y <= halfPaddleHeight + ballRadius) {
 
 			// corner collision
-			if ((distance.x * distance.x + distance.y * distance.y) <= (distance.x * distance.x + distance.y * distance.y) + ballRadius) {
+			if ((distance.x * distance.x + distance.y * distance.y) <= (distance.x * distance.x + distance.y * distance.y) - ballRadius) {
 				collision = true;
 				ballVelocity->x *= -1; // just treat as longside collision for simplicity
 			}
@@ -147,7 +147,7 @@ bool Utils::processCollisions(float ballRadius, vec2* ballOffsets, vec2* ballVel
 
 	if (collision) {
 		float k = 0.3f;
-		ballVelocity->x *= 1.01f;
+		ballVelocity->x *= 1.05f;
 		ballVelocity->y += k * paddleVelocities[i];
 	}
 	return collision;
